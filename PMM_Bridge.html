@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PMM Bridge</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d0f14; --ink2: #181b24; --ink3: #21263a;
+    --rule: #2a3045; --rule2: #343b55;
+    --hi: #f5c842; --hi2: #e8a820;
+    --blue: #3d85f5; --green: #3ecf8e; --red: #f56565; --purple: #a78bfa; --orange: #fb923c;
+    --text: #d8dce8; --muted: #6b7494; --faint: #404766;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--ink);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--rule) 39px, var(--rule) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--rule) 39px, var(--rule) 40px);
+    background-size: 40px 40px;
+  }
+  .shell { max-width: 1040px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+  /* Header */
+  header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 2px solid var(--hi); }
+  .brand-eyebrow { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--hi); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .brand-name { font-family: 'Barlow Condensed', sans-serif; font-size: 2.4rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1; color: #fff; }
+  .brand-name span { color: var(--hi); }
+  .brand-sub { font-size: 0.85rem; color: var(--muted); margin-top: 0.3rem; }
+  .header-badge { background: var(--ink3); border: 1px solid var(--rule2); border-radius: 6px; padding: 0.5rem 0.85rem; font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); text-align: right; line-height: 1.8; }
+  .header-badge strong { color: var(--hi); display: block; font-size: 0.75rem; margin-bottom: 0.1rem; }
+
+  /* Mode switcher */
+  .mode-bar { display: flex; gap: 0; margin-bottom: 1.75rem; border: 1px solid var(--rule2); border-radius: 8px; overflow: hidden; width: fit-content; }
+  .mode-btn {
+    padding: 0.65rem 1.5rem; font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    cursor: pointer; border: none; background: var(--ink2); color: var(--muted);
+    transition: all 0.15s; border-right: 1px solid var(--rule2);
+  }
+  .mode-btn:last-child { border-right: none; }
+  .mode-btn.active-est  { background: var(--hi);     color: var(--ink); }
+  .mode-btn.active-sel  { background: var(--purple);  color: #fff; }
+  .mode-btn.active-po   { background: var(--blue);    color: #fff; }
+  .mode-btn.active-ret  { background: var(--orange);  color: var(--ink); }
+  .mode-btn:hover:not(.active-est):not(.active-sel):not(.active-po):not(.active-ret) { color: var(--text); background: var(--ink3); }
+  .mode-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.6rem; }
+
+  /* Pipeline */
+  .pipeline { display: flex; align-items: center; margin-bottom: 2rem; overflow-x: auto; }
+  .pipe-step { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1rem; background: var(--ink2); border: 1px solid var(--rule); font-size: 0.78rem; font-weight: 600; color: var(--muted); white-space: nowrap; transition: all 0.2s; }
+  .pipe-step:first-child { border-radius: 6px 0 0 6px; }
+  .pipe-step:last-child  { border-radius: 0 6px 6px 0; }
+  .pipe-step.active-est  { background: var(--ink3); color: var(--hi);     border-color: var(--hi); z-index:1; }
+  .pipe-step.active-sel  { background: var(--ink3); color: var(--purple); border-color: var(--purple); z-index:1; }
+  .pipe-step.done        { color: var(--green); border-color: var(--green); background: rgba(62,207,142,0.05); }
+  .pipe-arrow { color: var(--rule2); font-size: 1rem; flex-shrink: 0; margin: 0 -1px; }
+  .pipe-num { font-family: 'DM Mono', monospace; font-size: 0.65rem; background: currentColor; color: var(--ink2); width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* Panel */
+  .panel { background: var(--ink2); border: 1px solid var(--rule); border-radius: 10px; margin-bottom: 1.25rem; overflow: hidden; }
+  .panel-head { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--rule); background: var(--ink3); }
+  .panel-head h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; }
+  .tag { font-family: 'DM Mono', monospace; font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 3px; font-weight: 600; letter-spacing: 0.05em; }
+  .tag-est { background: var(--hi);     color: var(--ink); }
+  .tag-sel { background: var(--purple); color: #fff; }
+  .tag-po  { background: var(--blue);   color: #fff; }
+  .tag-ret { background: var(--orange); color: var(--ink); }
+
+  /* Diff table */
+  .diff-added   td { background: rgba(62,207,142,0.07); }
+  .diff-changed td { background: rgba(251,146,60,0.07); }
+  .diff-missing td { background: rgba(245,101,101,0.07); color: var(--red); }
+  .diff-badge { display: inline-block; font-family: 'DM Mono', monospace; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 3px; font-weight: 700; }
+  .diff-badge.changed { background: rgba(251,146,60,0.2);  color: var(--orange); }
+  .diff-badge.missing { background: rgba(245,101,101,0.15); color: var(--red); }
+  .diff-badge.ok      { background: rgba(62,207,142,0.15);  color: var(--green); }
+  .val-old { color: var(--red);    text-decoration: line-through; font-family: 'DM Mono', monospace; font-size: 0.72rem; }
+  .val-new { color: var(--orange); font-family: 'DM Mono', monospace; font-size: 0.72rem; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+  .stat-box { background: var(--ink3); border: 1px solid var(--rule2); border-radius: 8px; padding: 0.85rem 1rem; }
+  .stat-num { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 800; line-height: 1; }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 0.2rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .stat-box.ok     .stat-num { color: var(--green);  }
+  .stat-box.change .stat-num { color: var(--orange); }
+  .stat-box.miss   .stat-num { color: var(--red);    }
+  .stat-box.total  .stat-num { color: var(--text);   }
+  .tag-step { background: var(--faint); color: var(--muted); }
+  .panel-body { padding: 1.25rem; }
+
+  /* Drive zone */
+  .drive-zone { border: 2px dashed var(--rule2); border-radius: 8px; padding: 2.5rem 1.5rem; text-align: center; transition: all 0.2s; background: rgba(255,255,255,0.01); }
+  .drive-zone.drag-over { border-color: var(--hi); background: rgba(245,200,66,0.03); }
+  .drive-label { font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+  .drive-label strong { color: var(--text); }
+  .drive-label .mono { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--hi); }
+  #file-input { display: none; }
+  .file-pill { display: inline-flex; align-items: center; gap: 0.6rem; background: var(--ink3); border: 1px solid var(--green); border-radius: 20px; padding: 0.4rem 0.9rem; font-size: 0.82rem; color: var(--green); margin-top: 1rem; font-family: 'DM Mono', monospace; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; border-radius: 6px; font-family: 'Barlow', sans-serif; font-size: 0.875rem; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-hi    { background: var(--hi);     color: var(--ink); }
+  .btn-hi:hover { background: var(--hi2); }
+  .btn-sel   { background: var(--purple); color: #fff; }
+  .btn-sel:hover { background: #c4b5fd; }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--rule2); }
+  .btn-ghost:hover { border-color: var(--hi); color: var(--hi); }
+  .btn-green { background: var(--green); color: #061a0f; font-weight: 700; }
+  .btn-green:hover { background: #5ce4a8; }
+  .btn-green:disabled, .btn-hi:disabled, .btn-sel:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-drive { background: #fff; color: #333; border: 1px solid #ddd; font-weight: 600; }
+  .btn-drive:hover { background: #f0f0f0; }
+  .btn-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.25rem; }
+
+  /* Status */
+  .status { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.7rem 1rem; border-radius: 7px; font-size: 0.83rem; margin-top: 0.75rem; line-height: 1.5; }
+  .status.ok   { background: rgba(62,207,142,0.07);  border: 1px solid rgba(62,207,142,0.2);  color: var(--green); }
+  .status.err  { background: rgba(245,101,101,0.07); border: 1px solid rgba(245,101,101,0.2); color: var(--red); }
+  .status.info { background: rgba(61,133,245,0.07);  border: 1px solid rgba(61,133,245,0.2);  color: var(--blue); }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; border-radius: 7px; border: 1px solid var(--rule); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  thead tr { background: var(--ink3); }
+  th { padding: 0.55rem 0.75rem; text-align: left; border-bottom: 1px solid var(--rule); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.07em; text-transform: uppercase; white-space: nowrap; font-weight: 500; }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+  td.allow-tag { color: var(--purple); font-family: 'DM Mono', monospace; font-size: 0.7rem; }
+
+  /* Map grid */
+  .map-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  @media (max-width: 600px) { .map-grid { grid-template-columns: 1fr; } }
+  .map-row { display: flex; align-items: center; gap: 0.6rem; background: var(--ink3); border: 1px solid var(--rule); border-radius: 7px; padding: 0.55rem 0.75rem; }
+  .map-label { font-size: 0.78rem; font-weight: 600; min-width: 130px; display: flex; align-items: center; gap: 0.4rem; color: var(--text); }
+  .dot-req  { width: 5px; height: 5px; background: var(--hi);     border-radius: 50%; flex-shrink: 0; }
+  .dot-sel  { width: 5px; height: 5px; background: var(--purple); border-radius: 50%; flex-shrink: 0; }
+  .dot-opt  { width: 5px; height: 5px; background: var(--faint);  border-radius: 50%; flex-shrink: 0; }
+
+  /* Inputs */
+  select, input[type="text"] { background: var(--ink2); border: 1px solid var(--rule2); border-radius: 5px; color: var(--text); padding: 0.3rem 0.55rem; font-family: 'Barlow', sans-serif; font-size: 0.8rem; flex: 1; outline: none; transition: border-color 0.15s; }
+  select:focus, input[type="text"]:focus { border-color: var(--hi); }
+
+  /* Options */
+  .opts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.75rem; }
+  .opt-group > label { display: block; font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-bottom: 0.35rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .toggle { display: flex; align-items: center; gap: 0.5rem; font-size: 0.83rem; cursor: pointer; padding: 0.35rem 0; }
+  .toggle input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--hi); }
+
+  /* Allowance flag section */
+  .allow-box { background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.25); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+  .allow-box-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--purple); }
+  .allow-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .allow-row label { font-size: 0.8rem; color: var(--muted); font-family: 'DM Mono', monospace; white-space: nowrap; }
+
+  /* Tabs */
+  .tab-strip { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+  .tab-btn { padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--rule2); background: var(--ink3); color: var(--muted); font-family: 'DM Mono', monospace; transition: all 0.15s; }
+  .tab-btn.active-est { background: var(--hi);     color: var(--ink); border-color: var(--hi); }
+  .tab-btn.active-sel { background: var(--purple); color: #fff;       border-color: var(--purple); }
+  .tab-btn:hover:not(.active-est):not(.active-sel) { border-color: var(--muted); color: var(--text); }
+
+  .row-meta { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); margin-bottom: 0.75rem; }
+  .divider  { border: none; border-top: 1px solid var(--rule); margin: 1.25rem 0; }
+  .sec-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+  .legend { display: flex; gap: 1.25rem; margin-bottom: 1rem; font-size: 0.73rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .hidden { display: none !important; }
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Info callout */
+  .callout { background: rgba(61,133,245,0.06); border: 1px solid rgba(61,133,245,0.2); border-radius: 8px; padding: 0.85rem 1rem; font-size: 0.82rem; color: #8ab4f8; line-height: 1.6; margin-bottom: 1rem; }
+  .callout strong { color: #b3ccfc; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="brand">
+      <div class="brand-eyebrow">SketchUp → BuilderTrend</div>
+      <div class="brand-name">PMM <span>BRIDGE</span></div>
+      <div class="brand-sub">Estimate · Selections · Purchase Orders · CSV Import Tool</div>
+    </div>
+    <div class="header-badge">
+      <strong>ESTIMATE OUTPUT</strong>
+      Title · Cost Code · Cost Type · Group<br>
+      Description · Qty · Unit · Price · Amount<br>
+      <strong style="margin-top:0.4rem;">SELECTIONS OUTPUT</strong>
+      Title · Category · Location · Allowance<br>
+      Deadline · Instructions · Notes
+    </div>
+  </header>
+
+  <!-- Mode switcher -->
+  <div style="margin-bottom:1.75rem;">
+    <div class="mode-label">Import mode</div>
+    <div class="mode-bar">
+      <button class="mode-btn active-sel" id="mode-sel" onclick="switchMode('selections')">🎨 Selections</button>
+      <button class="mode-btn" id="mode-est" onclick="switchMode('estimate')">📋 Estimate / Bid</button>
+      <button class="mode-btn" id="mode-po"  onclick="switchMode('po')">📦 Purchase Orders</button>
+      <button class="mode-btn" id="mode-ret" onclick="switchMode('return')">🔄 Return Import</button>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="pipeline">
+    <div class="pipe-step active-est" id="ps1"><div class="pipe-num">1</div> Load from Drive</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-step" id="ps2"><div class="pipe-num">2</div> Map Columns</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-step" id="ps3"><div class="pipe-num">3</div> Options</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-step" id="ps4"><div class="pipe-num">4</div> Download</div>
+  </div>
+
+  <!-- Step 1: Load -->
+  <div class="panel" id="card-load">
+    <div class="panel-head">
+      <h2>Load Source CSV</h2>
+      <span class="tag tag-step">STEP 1</span>
+      <span class="tag tag-sel" id="mode-tag-load" style="margin-left:auto;">SELECTIONS</span>
+    </div>
+    <div class="panel-body">
+      <div class="drive-zone" id="drive-zone">
+        <div style="margin-bottom:0.75rem;">
+          <svg width="44" height="38" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+            <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+            <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+            <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+            <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+            <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+          </svg>
+        </div>
+        <div class="drive-label">
+          <strong>Drag & drop a CSV here</strong> or use the buttons below<br>
+          Accepts <span class="mono">.csv</span> files exported from SketchUp
+        </div>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.txt">
+      <div id="file-info" class="hidden"></div>
+      <div class="btn-row">
+        <button class="btn btn-drive" id="btn-drive-pick">
+          <svg width="16" height="14" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+          Choose from Google Drive
+        </button>
+        <button class="btn btn-ghost" id="btn-local">📁 Browse local file</button>
+      </div>
+      <div id="load-status"></div>
+    </div>
+  </div>
+
+  <!-- Step 2: Map -->
+  <div class="panel hidden" id="card-map">
+    <div class="panel-head">
+      <h2>Map Columns → BuilderTrend Fields</h2>
+      <span class="tag tag-step">STEP 2</span>
+      <span class="tag tag-sel" id="mode-tag-map" style="margin-left:auto;">SELECTIONS</span>
+    </div>
+    <div class="panel-body">
+      <div class="legend" id="map-legend">
+        <div class="legend-item"><div class="dot-req"></div> required</div>
+        <div class="legend-item"><div class="dot-opt"></div> optional</div>
+      </div>
+      <div class="map-grid" id="map-grid"></div>
+      <hr class="divider">
+      <div class="sec-label">Source preview — first 5 rows</div>
+      <div class="tbl-wrap" id="preview-tbl"></div>
+    </div>
+  </div>
+
+  <!-- Step 3: Options -->
+  <div class="panel hidden" id="card-opts">
+    <div class="panel-head">
+      <h2>Export Options</h2>
+      <span class="tag tag-step">STEP 3</span>
+      <span class="tag tag-sel" id="mode-tag-opts" style="margin-left:auto;">SELECTIONS</span>
+    </div>
+    <div class="panel-body">
+
+      <!-- ESTIMATE options -->
+      <div id="est-opts" class="hidden">
+        <div class="opts-grid">
+          <div class="opt-group">
+            <label>Group rows by field</label>
+            <select id="opt-group"></select>
+          </div>
+          <div class="opt-group">
+            <label>Default unit label</label>
+            <input type="text" id="opt-unit" value="EA" placeholder="EA, LF, SF, LS…">
+          </div>
+          <div class="opt-group">
+            <label>Amount / Total column</label>
+            <select id="opt-amount">
+              <option value="calc">Calculate (Qty × Unit Price)</option>
+              <option value="source">Use source column</option>
+              <option value="omit">Omit</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <label>Output filename</label>
+            <input type="text" id="opt-filename-est" value="BT_Estimate_Import" placeholder="no extension">
+          </div>
+        </div>
+        <hr class="divider">
+        <label class="toggle"><input type="checkbox" id="opt-skip-zero" checked> Skip rows where Quantity = 0 or blank</label>
+        <label class="toggle"><input type="checkbox" id="opt-trim" checked> Trim whitespace from all cells</label>
+        <label class="toggle"><input type="checkbox" id="opt-dims"> Append dimensions to Description (e.g. "Door — 36×84")</label>
+
+        <!-- Allowance flagging -->
+        <div class="allow-box">
+          <div class="allow-box-head">🎨 Allowance / Selections Flagging</div>
+          <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.85rem;">
+            Mark matching rows as <strong style="color:var(--purple)">Allowance</strong> so they flow directly into the BT Selections sheet on import.
+            Rows are flagged when a source field matches a value you specify below.
+          </p>
+          <label class="toggle" style="margin-bottom:0.75rem;">
+            <input type="checkbox" id="opt-allow-enable">
+            Enable Allowance flagging
+          </label>
+          <div id="allow-config" class="hidden">
+            <div class="allow-row">
+              <label>Flag when field</label>
+              <select id="allow-field" style="max-width:180px;"></select>
+              <label>contains</label>
+              <input type="text" id="allow-value" placeholder='e.g. "selection" or "allowance"' style="max-width:200px;">
+            </div>
+            <p style="font-size:0.75rem;color:var(--faint);margin-top:0.5rem;font-family:'DM Mono',monospace;">
+              Leave value blank to flag ALL rows as Allowance.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PO options -->
+      <div id="po-opts" class="hidden">
+        <div class="callout">
+          <strong>Purchase Order mode</strong> — outputs a CSV grouped by Vendor/Sub, with all line item fields pre-filled. Use this as a structured data-entry guide to create POs in BT, or group by vendor and create one PO per vendor.
+        </div>
+        <div class="opts-grid">
+          <div class="opt-group">
+            <label>Group rows by field</label>
+            <select id="po-opt-group"></select>
+          </div>
+          <div class="opt-group">
+            <label>Default unit label</label>
+            <input type="text" id="po-opt-unit" value="EA" placeholder="EA, LF, SF, LS…">
+          </div>
+          <div class="opt-group">
+            <label>Amount / Total column</label>
+            <select id="po-opt-amount">
+              <option value="calc">Calculate (Qty × Unit Price)</option>
+              <option value="source">Use source column</option>
+              <option value="omit">Omit</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <label>Output filename</label>
+            <input type="text" id="opt-filename-po" value="BT_PO_Import" placeholder="no extension">
+          </div>
+        </div>
+        <hr class="divider">
+        <label class="toggle"><input type="checkbox" id="po-opt-skip-zero" checked> Skip rows where Quantity = 0 or blank</label>
+        <label class="toggle"><input type="checkbox" id="po-opt-trim" checked> Trim whitespace from all cells</label>
+      </div>
+
+      <!-- SELECTIONS options -->
+      <div id="sel-opts">
+        <div class="callout">
+          <strong>How Selections import works:</strong> BT's Selections sheet doesn't have a direct CSV import wizard like Estimates. This mode outputs a clean spreadsheet you can use as a structured data-entry guide, or paste into BT's Excel template. Each row = one Selection item with its key fields pre-filled.
+        </div>
+        <div class="opts-grid">
+          <div class="opt-group">
+            <label>Group / sort by field</label>
+            <select id="sel-opt-group"></select>
+          </div>
+          <div class="opt-group">
+            <label>Default deadline</label>
+            <input type="text" id="sel-opt-deadline" placeholder="e.g. TBD or 2025-06-01">
+          </div>
+          <div class="opt-group">
+            <label>Output filename</label>
+            <input type="text" id="opt-filename-sel" value="BT_Selections_Import" placeholder="no extension">
+          </div>
+        </div>
+        <hr class="divider">
+        <label class="toggle"><input type="checkbox" id="sel-opt-trim" checked> Trim whitespace from all cells</label>
+        <label class="toggle"><input type="checkbox" id="sel-opt-allowance"> Include Allowance amount column (maps from Unit Price or Amount)</label>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-hi hidden" id="btn-process-est">⚙ Process &amp; Preview</button>
+        <button class="btn btn-sel" id="btn-process-sel">⚙ Process &amp; Preview</button>
+        <button class="btn hidden" id="btn-process-po" style="background:var(--blue);color:#fff;font-weight:700;">⚙ Process &amp; Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Output -->
+  <div class="panel hidden" id="card-out">
+    <div class="panel-head">
+      <h2>Output Preview</h2>
+      <span class="tag tag-step">STEP 4</span>
+      <span class="tag tag-sel" id="mode-tag-out" style="margin-left:auto;">SELECTIONS</span>
+    </div>
+    <div class="panel-body">
+      <div class="tab-strip" id="out-tabs"></div>
+      <div class="row-meta" id="row-meta"></div>
+      <div class="tbl-wrap" id="out-tbl"></div>
+      <div id="out-status"></div>
+      <div class="btn-row">
+        <button class="btn btn-green" id="btn-dl">⬇ Download CSV</button>
+        <button class="btn btn-ghost" id="btn-reset">↺ Start Over</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+
+<!-- ═══ RETURN IMPORT MODE ════════════════════════════════════════════════ -->
+<div id="ret-shell" class="hidden" style="max-width:1040px;margin:0 auto;padding:0 1.5rem 4rem;">
+
+  <div class="callout" style="margin-bottom:1.5rem;">
+    <strong>🔄 Return Import — BT → SketchUp sync</strong><br>
+    Load your original SketchUp export CSV and a BuilderTrend confirmed CSV. PMM Bridge matches rows by
+    <span style="font-family:'DM Mono',monospace;color:#b3ccfc">pmm_uuid</span>, applies BT values as the source of truth,
+    and outputs a reconciled CSV + change report ready to import back into SketchUp via the Ruby plugin.
+  </div>
+
+  <!-- Load two files -->
+  <div class="panel">
+    <div class="panel-head"><h2>Load Files</h2><span class="tag tag-ret">RETURN IMPORT</span></div>
+    <div class="panel-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+
+        <div>
+          <div class="sec-label" style="margin-bottom:0.5rem;">① Original SketchUp Export CSV</div>
+          <div class="drive-zone" id="ret-dz-su" style="padding:1.5rem 1rem;cursor:pointer;">
+            <div style="font-size:1.5rem;margin-bottom:0.4rem;">📐</div>
+            <div class="drive-label"><strong>SketchUp CSV</strong><br><span class="mono">pmm_uuid column required</span></div>
+          </div>
+          <input type="file" id="ret-file-su" accept=".csv,.txt">
+          <div id="ret-info-su" class="hidden" style="margin-top:0.6rem;"></div>
+        </div>
+
+        <div>
+          <div class="sec-label" style="margin-bottom:0.5rem;">② BuilderTrend Confirmed Export CSV</div>
+          <div class="drive-zone" id="ret-dz-bt" style="padding:1.5rem 1rem;cursor:pointer;">
+            <div style="font-size:1.5rem;margin-bottom:0.4rem;">🏗️</div>
+            <div class="drive-label"><strong>BuilderTrend CSV</strong><br><span class="mono">exported after PO confirmed</span></div>
+          </div>
+          <input type="file" id="ret-file-bt" accept=".csv,.txt">
+          <div id="ret-info-bt" class="hidden" style="margin-top:0.6rem;"></div>
+        </div>
+
+      </div>
+
+      <!-- Column mapping for BT file -->
+      <div id="ret-map-section" class="hidden" style="margin-top:1.25rem;">
+        <hr class="divider">
+        <div class="sec-label">Map BT columns → sync fields</div>
+        <div class="callout" style="margin-bottom:1rem;font-size:0.8rem;">
+          Tell PMM Bridge which columns in the <strong>BT file</strong> correspond to each field.
+          The UUID match column is required — it must contain the <span style="font-family:'DM Mono',monospace">pmm_uuid</span> values from your original export.
+        </div>
+        <div class="map-grid" id="ret-map-grid"></div>
+      </div>
+
+      <div id="ret-load-status"></div>
+      <div class="btn-row">
+        <button class="btn" id="btn-ret-reconcile" style="background:var(--orange);color:var(--ink);font-weight:700;" disabled>⚡ Reconcile & Diff</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diff report -->
+  <div class="panel hidden" id="ret-card-diff">
+    <div class="panel-head"><h2>Change Report</h2><span class="tag tag-ret">BT WINS</span></div>
+    <div class="panel-body">
+      <div class="stat-grid" id="ret-stats"></div>
+      <div class="tab-strip" id="ret-tabs"></div>
+      <div class="tbl-wrap" id="ret-diff-tbl"></div>
+      <div id="ret-diff-status"></div>
+      <div class="btn-row">
+        <button class="btn btn-green" id="btn-ret-dl-reconciled">⬇ Download Reconciled CSV</button>
+        <button class="btn" id="btn-ret-dl-changelog" style="background:var(--ink3);color:var(--orange);border:1px solid var(--orange);">⬇ Download Change Log</button>
+        <button class="btn btn-ghost" id="btn-ret-reset">↺ Start Over</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /ret-shell -->
+
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+// ─── Field schemas ────────────────────────────────────────────────────────────
+// ── Field definitions — keyed to dynamic_attributes names in SketchUp ────────
+
+const EST_FIELDS = [
+  { key:'title',        label:'Title',            req:true,  dot:'req' },
+  { key:'cost_code',    label:'Cost Code',         req:true,  dot:'req' },
+  { key:'cost_type',    label:'Cost Type',         req:false, dot:'opt' },
+  { key:'group',        label:'Group',             req:false, dot:'opt' },
+  { key:'description',  label:'Description',       req:false, dot:'opt' },
+  { key:'quantity',     label:'Quantity',           req:true,  dot:'req' },
+  { key:'unit',         label:'Unit',               req:false, dot:'opt' },
+  { key:'unit_price',   label:'Unit Price',         req:true,  dot:'req' },
+  { key:'amount',       label:'Amount',             req:false, dot:'opt' },
+  { key:'vendor',       label:'Vendor / Sub',       req:false, dot:'opt' },
+  { key:'notes',        label:'Internal Notes',     req:false, dot:'opt' },
+];
+const EST_HEADERS = [
+  'Title','Cost Code','Cost Type','Group','Description',
+  'Quantity','Unit','Unit Price','Amount','Vendor/Sub','Internal Notes','Mark As'
+];
+
+const SEL_FIELDS = [
+  { key:'title',            label:'Title',               req:true,  dot:'sel' },
+  { key:'category',         label:'Category',             req:true,  dot:'sel' },
+  { key:'location',         label:'Location',             req:false, dot:'opt' },
+  { key:'allowance',        label:'Allowance',            req:false, dot:'opt' },
+  { key:'deadline',         label:'Deadline',             req:false, dot:'opt' },
+  { key:'instructions',     label:'Instructions',         req:false, dot:'opt' },
+  { key:'selections_notes', label:'Selections Notes',     req:false, dot:'opt' },
+  { key:'cost_code',        label:'Cost Code',            req:false, dot:'opt' },
+];
+const SEL_HEADERS = [
+  'Title','Category','Location','Allowance','Deadline',
+  'Instructions','Selections Notes','Cost Code'
+];
+
+const PO_FIELDS = [
+  { key:'title',         label:'Title',            req:true,  dot:'req' },
+  { key:'vendor',        label:'Vendor / Sub',      req:true,  dot:'req' },
+  { key:'cost_code',     label:'Cost Code',         req:true,  dot:'req' },
+  { key:'scope_of_work', label:'Scope of Work',     req:false, dot:'opt' },
+  { key:'po_date',       label:'PO Date',           req:false, dot:'opt' },
+  { key:'po_notes',      label:'PO Internal Notes', req:false, dot:'opt' },
+  { key:'description',   label:'Description',       req:false, dot:'opt' },
+  { key:'cost_type',     label:'Cost Type',         req:false, dot:'opt' },
+  { key:'quantity',      label:'Quantity',           req:false, dot:'opt' },
+  { key:'unit',          label:'Unit',               req:false, dot:'opt' },
+  { key:'unit_price',    label:'Unit Price',         req:false, dot:'opt' },
+  { key:'amount',        label:'Amount',             req:false, dot:'opt' },
+];
+const PO_HEADERS = [
+  'Title','Vendor/Sub','Cost Code','Scope of Work','PO Date',
+  'PO Internal Notes','Description','Cost Type','Quantity','Unit','Unit Price','Amount'
+];
+
+// All fields that can sync back from BT → SketchUp
+const RET_SYNC_FIELDS = [
+  'title','vendor','cost_code','cost_type','group',
+  'scope_of_work','po_date','po_notes',
+  'description','quantity','unit','unit_price','amount',
+  'category','location','allowance','deadline',
+  'instructions','selections_notes','notes',
+];
+
+// BT column auto-match for return import
+function retAutoMatch(h) {
+  const k = h.toLowerCase().replace(/[\s_\-()/]/g,'');
+  const map = {
+    pmm_uuid:         ['pmmid','pmmuid','pmmuuid','uuid','id','componentid'],
+    title:            ['title','name','itemname','componentname','linetitle'],
+    vendor:           ['vendor','sub','subcontractor','supplier','assignedto','vendorsub'],
+    cost_code:        ['costcode','code','category','accountcode','division'],
+    cost_type:        ['costtype','type','linetype'],
+    group:            ['group','phase','section','customgroup'],
+    scope_of_work:    ['scopeofwork','scope','workscope','description'],
+    po_date:          ['podate','date','orderdate','purchasedate'],
+    po_notes:         ['ponotes','pointernalnotes','internalnotes','notes','memo'],
+    description:      ['description','desc','detail','itemdescription'],
+    quantity:         ['quantity','qty','count'],
+    unit:             ['unit','uom','unitofmeasure'],
+    unit_price:       ['unitprice','price','unitcost','cost','rate'],
+    amount:           ['amount','total','totalcost','linetotal','extended'],
+    category:         ['category','selectioncategory','selectiontype'],
+    location:         ['location','room','space','area'],
+    allowance:        ['allowance','allowanceamount','budget'],
+    deadline:         ['deadline','duedate','due'],
+    instructions:     ['instructions','publicinstructions','clientnotes'],
+    selections_notes: ['selectionsnotes','selectionnotes','internalnotes'],
+    notes:            ['notes','internalnotes','memo','comment'],
+  };
+  for (const [field, kws] of Object.entries(map)) if (kws.includes(k)) return field;
+  return '';
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let mode = 'selections'; // 'estimate' | 'selections' | 'po' | 'return'
+let srcHeaders = [], srcRows = [], outputGroups = {};
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+
+function setStep(n) {
+  [1,2,3,4].forEach(i => {
+    const el = $(`ps${i}`);
+    el.classList.remove('active-est','active-sel','done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add(mode === 'estimate' ? 'active-est' : 'active-sel');
+  });
+}
+
+function switchMode(m) {
+  mode = m;
+  const isEst = m === 'estimate';
+  const isSel = m === 'selections';
+  const isPO  = m === 'po';
+  const isRet = m === 'return';
+
+  $('mode-est').className = 'mode-btn' + (isEst ? ' active-est' : '');
+  $('mode-sel').className = 'mode-btn' + (isSel ? ' active-sel' : '');
+  $('mode-po').className  = 'mode-btn' + (isPO  ? ' active-po'  : '');
+  $('mode-ret').className = 'mode-btn' + (isRet ? ' active-ret' : '');
+
+  if (isRet) {
+    document.querySelector('.shell').classList.add('hidden');
+    $('ret-shell').classList.remove('hidden');
+    return;
+  } else {
+    document.querySelector('.shell').classList.remove('hidden');
+    $('ret-shell').classList.add('hidden');
+  }
+
+  const modeLabel = isEst ? 'ESTIMATE' : isSel ? 'SELECTIONS' : 'PURCHASE ORDER';
+  const tagClass  = isEst ? 'tag tag-est' : isSel ? 'tag tag-sel' : 'tag tag-po';
+  ['load','map','opts','out'].forEach(s => {
+    const el = $(`mode-tag-${s}`);
+    if (el) { el.textContent = modeLabel; el.className = tagClass; }
+  });
+
+  // Process buttons
+  isEst ? show('btn-process-est') : hide('btn-process-est');
+  isSel ? show('btn-process-sel') : hide('btn-process-sel');
+  isPO  ? show('btn-process-po')  : hide('btn-process-po');
+
+  // Options panels
+  isEst ? show('est-opts') : hide('est-opts');
+  isSel ? show('sel-opts') : hide('sel-opts');
+  isPO  ? show('po-opts')  : hide('po-opts');
+
+  const leg = $('map-legend');
+  leg.innerHTML = isSel
+    ? `<div class="legend-item"><div class="dot-sel"></div> required</div><div class="legend-item"><div class="dot-opt"></div> optional</div>`
+    : `<div class="legend-item"><div class="dot-req"></div> required</div><div class="legend-item"><div class="dot-opt"></div> optional</div>`;
+
+  if (srcHeaders.length) { buildMapUI(); buildGroupSelects(); }
+  hide('card-out');
+  setStep(srcHeaders.length ? 2 : 1);
+}
+
+// ─── Return Import state ──────────────────────────────────────────────────────
+let retSUHeaders = [], retSURows = [];   // original SketchUp export
+let retBTHeaders = [], retBTRows = [];   // BT confirmed export
+let retReconciled = [];                   // merged output rows
+let retChangelog  = [];                   // diff rows
+
+// ─── Return file loaders ──────────────────────────────────────────────────────
+function setupRetDropzone(dzId, fileInputId, infoId, onLoad) {
+  const dz = $(dzId);
+  const fi = $(fileInputId);
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) readRetFile(e.dataTransfer.files[0], infoId, onLoad);
+  });
+  fi.addEventListener('change', e => { if (e.target.files[0]) readRetFile(e.target.files[0], infoId, onLoad); });
+}
+
+function readRetFile(file, infoId, onLoad) {
+  const r = new FileReader();
+  r.onload = e => {
+    const { headers, rows } = parseCSV(e.target.result);
+    $(infoId).innerHTML = `<div class="file-pill">📄 <strong>${file.name}</strong> <span style="color:var(--muted)">${rows.length} rows · ${headers.length} cols</span></div>`;
+    show(infoId);
+    onLoad(headers, rows);
+  };
+  r.readAsText(file);
+}
+
+setupRetDropzone('ret-dz-su', 'ret-file-su', 'ret-info-su', (h, r) => {
+  retSUHeaders = h; retSURows = r;
+  checkRetReady();
+});
+
+setupRetDropzone('ret-dz-bt', 'ret-file-bt', 'ret-info-bt', (h, r) => {
+  retBTHeaders = h; retBTRows = r;
+  buildRetMapGrid();
+  checkRetReady();
+});
+
+function checkRetReady() {
+  if (retSUHeaders.length && retBTHeaders.length) {
+    $('btn-ret-reconcile').disabled = false;
+    showStatus('ret-load-status', 'ok', '✓ Both files loaded — map BT columns above then click Reconcile.');
+  }
+}
+
+// ─── BT column mapping grid ───────────────────────────────────────────────────
+function buildRetMapGrid() {
+  const fields = [
+    { key:'pmm_uuid',    label:'UUID (match key)', req:true },
+    { key:'quantity',    label:'Quantity',          req:false },
+    { key:'description', label:'Description',       req:false },
+    { key:'cost_code',   label:'Cost Code',         req:false },
+    { key:'vendor',      label:'Vendor / Sub',      req:false },
+    { key:'unit_price',  label:'Unit Price',        req:false },
+    { key:'unit',        label:'Unit',              req:false },
+    { key:'phase',       label:'Phase / Group',     req:false },
+    { key:'notes',       label:'Notes',             req:false },
+  ];
+  const grid = $('ret-map-grid');
+  grid.innerHTML = '';
+  fields.forEach(f => {
+    const auto = retBTHeaders.find(h => retAutoMatch(h) === f.key) || '';
+    const row = document.createElement('div');
+    row.className = 'map-row';
+    row.innerHTML = `
+      <div class="map-label"><div class="${f.req ? 'dot-req' : 'dot-opt'}"></div>${f.label}</div>
+      <span style="color:var(--faint);font-size:0.75rem">←</span>
+      <select id="ret-map-${f.key}">
+        <option value="">— skip —</option>
+        ${retBTHeaders.map(h => `<option value="${h}"${h===auto?' selected':''}>${h}</option>`).join('')}
+      </select>`;
+    grid.appendChild(row);
+  });
+  show('ret-map-section');
+}
+
+// ─── Reconcile ────────────────────────────────────────────────────────────────
+$('btn-ret-reconcile').addEventListener('click', () => {
+  const uuidCol = $('ret-map-pmm_uuid')?.value;
+  if (!uuidCol) { showStatus('ret-load-status','err','⚠ You must map the UUID column from the BT file.'); return; }
+
+  // ── VALIDATION ──────────────────────────────────────────────────────────────
+  const suUUIDIdx = retSUHeaders.indexOf('pmm_uuid');
+  if (suUUIDIdx < 0) {
+    showStatus('ret-load-status','err','⚠ SketchUp CSV has no pmm_uuid column. Export using the PMM Bridge exporter plugin first.');
+    return;
+  }
+
+  // Categorise every RET_SYNC_FIELD against SU headers and BT mapping
+  const vMapped   = [];  // in SU + mapped to BT col that exists → will sync ✓
+  const vUnmapped = [];  // in SU + NOT mapped → will be skipped ⚠
+  const vBadCol   = [];  // in SU + mapped but BT col missing from file ✕
+  const vBTOnly   = [];  // not in SU + mapped → won't write back ℹ
+
+  RET_SYNC_FIELDS.forEach(field => {
+    const inSU  = retSUHeaders.includes(field);
+    const btCol = $('ret-map-' + field)?.value;
+    const btColInFile = btCol && retBTHeaders.includes(btCol);
+
+    if (inSU && btCol && btColInFile)  vMapped.push({ field, btCol });
+    else if (inSU && btCol && !btColInFile) vBadCol.push({ field, btCol });
+    else if (inSU && !btCol) {
+      const couldMap = retBTHeaders.some(h => retAutoMatch(h) === field);
+      vUnmapped.push({ field, couldMap });
+    } else if (!inSU && btCol) vBTOnly.push({ field, btCol });
+  });
+
+  const hasWarnings = vUnmapped.length > 0 || vBadCol.length > 0;
+
+  // Build validation panel HTML
+  let vHtml = '<div style="font-family:\'DM Mono\',monospace;font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem;">Field Coverage Report</div>';
+
+  if (vMapped.length) {
+    vHtml += '<div style="margin-bottom:0.6rem;">'
+      + '<div style="font-size:0.75rem;font-weight:700;color:var(--green);margin-bottom:0.35rem;">✓ ' + vMapped.length + ' field' + (vMapped.length!==1?'s':'') + ' will sync (BT → SketchUp)</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">'
+      + vMapped.map(v => '<span style="background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.25);border-radius:4px;padding:0.15rem 0.5rem;font-family:\'DM Mono\',monospace;font-size:0.7rem;color:var(--green);">'
+          + v.field + ' ← <em style="opacity:0.7">' + v.btCol + '</em></span>').join('')
+      + '</div></div>';
+  }
+
+  if (vUnmapped.length) {
+    vHtml += '<div style="margin-bottom:0.6rem;">'
+      + '<div style="font-size:0.75rem;font-weight:700;color:var(--orange);margin-bottom:0.35rem;">⚠ ' + vUnmapped.length + ' field' + (vUnmapped.length!==1?'s':'') + ' in SketchUp export but NOT mapped — will be skipped</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">'
+      + vUnmapped.map(v => '<span style="background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.3);border-radius:4px;padding:0.15rem 0.5rem;font-family:\'DM Mono\',monospace;font-size:0.7rem;color:var(--orange);">'
+          + v.field + (v.couldMap ? ' 💡' : '') + '</span>').join('')
+      + '</div><div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;">💡 = a likely BT column was detected — scroll up and map it to include this field.</div></div>';
+  }
+
+  if (vBadCol.length) {
+    vHtml += '<div style="margin-bottom:0.6rem;">'
+      + '<div style="font-size:0.75rem;font-weight:700;color:var(--red);margin-bottom:0.35rem;">✕ ' + vBadCol.length + ' field' + (vBadCol.length!==1?'s':'') + ' mapped to a BT column not found in the BT file</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">'
+      + vBadCol.map(v => '<span style="background:rgba(245,101,101,0.1);border:1px solid rgba(245,101,101,0.3);border-radius:4px;padding:0.15rem 0.5rem;font-family:\'DM Mono\',monospace;font-size:0.7rem;color:var(--red);">'
+          + v.field + ' ← <em style="opacity:0.7">' + v.btCol + ' (not found)</em></span>').join('')
+      + '</div></div>';
+  }
+
+  if (vBTOnly.length) {
+    vHtml += '<div style="margin-bottom:0.6rem;">'
+      + '<div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:0.35rem;">ℹ ' + vBTOnly.length + ' BT field' + (vBTOnly.length!==1?'s':'') + ' mapped but absent from SketchUp export — won\'t write back</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">'
+      + vBTOnly.map(v => '<span style="background:rgba(107,116,148,0.1);border:1px solid rgba(107,116,148,0.2);border-radius:4px;padding:0.15rem 0.5rem;font-family:\'DM Mono\',monospace;font-size:0.7rem;color:var(--muted);">'
+          + v.field + '</span>').join('')
+      + '</div></div>';
+  }
+
+  // Inject or update validation panel at top of diff card
+  let vPanel = $('ret-validation');
+  if (!vPanel) {
+    vPanel = document.createElement('div');
+    vPanel.id = 'ret-validation';
+    vPanel.style.cssText = 'background:var(--ink3);border:1px solid var(--rule2);border-radius:8px;padding:1rem;margin-bottom:1.25rem;';
+    const pb = $('ret-card-diff').querySelector('.panel-body');
+    pb.insertBefore(vPanel, pb.firstChild);
+  }
+  vPanel.innerHTML = vHtml;
+
+  // Hard stop if nothing will sync
+  if (vMapped.length === 0) {
+    showStatus('ret-load-status','err','⚠ No fields are mapped to sync. Complete the BT column mapping above before reconciling.');
+    show('ret-card-diff');
+    return;
+  }
+
+  if (hasWarnings) {
+    showStatus('ret-load-status','info',
+      '⚠ ' + (vUnmapped.length + vBadCol.length) + ' field(s) will be skipped — review the coverage report in the panel below.');
+  } else {
+    clearStatus('ret-load-status');
+  }
+
+  // ── RECONCILE ───────────────────────────────────────────────────────────────
+  const btMap = {};
+  retBTRows.forEach(row => {
+    const i = retBTHeaders.indexOf(uuidCol);
+    const uuid = i >= 0 ? row[i]?.toString().trim() : '';
+    if (uuid) btMap[uuid] = row;
+  });
+
+  retReconciled = [];
+  retChangelog  = [];
+  let matched = 0, unmatched = 0, changed = 0, unchanged = 0;
+  const outHeaders = [...retSUHeaders];
+
+  retSURows.forEach(suRow => {
+    const uuid = suRow[suUUIDIdx]?.toString().trim();
+    const btRow = btMap[uuid];
+    const outRow = [...suRow];
+    const nameIdx = retSUHeaders.indexOf('component_name');
+    const compName = nameIdx >= 0 ? suRow[nameIdx] : uuid;
+
+    if (!btRow) {
+      unmatched++;
+      retReconciled.push({ row: outRow, status: 'missing', uuid, name: compName });
+      return;
+    }
+
+    matched++;
+    let rowChanged = false;
+
+    vMapped.forEach(({ field, btCol }) => {
+      const btIdx = retBTHeaders.indexOf(btCol);
+      const suIdx = retSUHeaders.indexOf(field);
+      if (btIdx < 0 || suIdx < 0) return;
+      const btVal = btRow[btIdx]?.toString().trim() ?? '';
+      const suVal = suRow[suIdx]?.toString().trim() ?? '';
+      if (btVal !== suVal) {
+        outRow[suIdx] = btVal;
+        retChangelog.push({ uuid, name: compName, field, old_value: suVal, new_value: btVal });
+        rowChanged = true;
+        changed++;
+      }
+    });
+
+    if (!rowChanged) unchanged++;
+    retReconciled.push({ row: outRow, status: rowChanged ? 'changed' : 'ok', uuid, name: compName });
+  });
+
+  // Stats
+  $('ret-stats').innerHTML =
+    '<div class="stat-box total"><div class="stat-num">' + retSURows.length + '</div><div class="stat-label">Total Components</div></div>' +
+    '<div class="stat-box ok"><div class="stat-num">' + unchanged + '</div><div class="stat-label">Unchanged</div></div>' +
+    '<div class="stat-box change"><div class="stat-num">' + changed + '</div><div class="stat-label">Fields Updated</div></div>' +
+    '<div class="stat-box miss"><div class="stat-num">' + unmatched + '</div><div class="stat-label">Unmatched in BT</div></div>';
+
+  // Diff tabs
+  const tabs = ['All','Changed','Unmatched','Unchanged'];
+  const tabStrip = $('ret-tabs');
+  tabStrip.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (i === 0 ? ' active-ret' : '');
+    btn.textContent = t;
+    btn.onclick = () => {
+      document.querySelectorAll('#ret-tabs .tab-btn').forEach(b => b.classList.remove('active-ret'));
+      btn.classList.add('active-ret');
+      renderRetDiff(t, outHeaders);
+    };
+    tabStrip.appendChild(btn);
+  });
+
+  renderRetDiff('All', outHeaders);
+
+  const syncMsg = hasWarnings
+    ? '✓ Reconciliation complete — ' + vMapped.length + ' of ' + RET_SYNC_FIELDS.filter(f => retSUHeaders.includes(f)).length + ' fields syncing. See coverage report above.'
+    : '✓ Reconciliation complete. ' + changed + ' field' + (changed!==1?'s':'') + ' updated across ' + matched + ' matched components.';
+
+  showStatus('ret-diff-status', hasWarnings ? 'info' : 'ok', syncMsg);
+  show('ret-card-diff');
+});
+
+function renderRetDiff(filter, headers) {
+  let rows = retReconciled;
+  if (filter === 'Changed')   rows = rows.filter(r => r.status === 'changed');
+  if (filter === 'Unmatched') rows = rows.filter(r => r.status === 'missing');
+  if (filter === 'Unchanged') rows = rows.filter(r => r.status === 'ok');
+
+  const preview = rows.slice(0, 10);
+  const more    = rows.length - 10;
+
+  // Find which column indices were changed per row using changelog
+  const changeIndex = {};
+  retChangelog.forEach(c => {
+    if (!changeIndex[c.uuid]) changeIndex[c.uuid] = {};
+    changeIndex[c.uuid][c.field] = { old: c.old_value, new: c.new_value };
+  });
+
+  $('ret-diff-tbl').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Status</th>
+        ${headers.map(h=>`<th>${h}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${preview.map(r => {
+          const uuid = r.uuid;
+          const changes = changeIndex[uuid] || {};
+          const trClass = r.status === 'changed' ? 'diff-changed' : r.status === 'missing' ? 'diff-missing' : '';
+          const badge = r.status === 'changed'
+            ? `<span class="diff-badge changed">UPDATED</span>`
+            : r.status === 'missing'
+            ? `<span class="diff-badge missing">UNMATCHED</span>`
+            : `<span class="diff-badge ok">OK</span>`;
+          const cells = headers.map((h, hi) => {
+            if (changes[h]) {
+              return `<td><span class="val-old">${changes[h].old}</span> <span class="val-new">→ ${changes[h].new}</span></td>`;
+            }
+            return `<td>${r.row[hi] ?? ''}</td>`;
+          }).join('');
+          return `<tr class="${trClass}"><td>${badge}</td>${cells}</tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    ${more > 0 ? `<div style="padding:0.5rem 0.75rem;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)">… +${more} more rows</div>` : ''}`;
+}
+
+// ─── Return downloads ─────────────────────────────────────────────────────────
+$('btn-ret-dl-reconciled').addEventListener('click', () => {
+  const suUUIDIdx = retSUHeaders.indexOf('pmm_uuid');
+  const headers = retSUHeaders;
+  const rows = retReconciled.map(r => r.row);
+  const content = toCSV([headers, ...rows]);
+  triggerDownload(content, 'pmm_reconciled.csv');
+});
+
+$('btn-ret-dl-changelog').addEventListener('click', () => {
+  if (!retChangelog.length) { showStatus('ret-diff-status','info','No changes to log — all rows matched with no differences.'); return; }
+  const headers = ['pmm_uuid','component_name','field','old_value','new_value'];
+  const rows = retChangelog.map(c => [c.uuid, c.name, c.field, c.old_value, c.new_value]);
+  const content = toCSV([headers, ...rows]);
+  triggerDownload(content, 'pmm_changelog.csv');
+});
+
+function triggerDownload(content, filename) {
+  const blob = new Blob([content], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+$('btn-ret-reset').addEventListener('click', () => {
+  retSUHeaders=[]; retSURows=[]; retBTHeaders=[]; retBTRows=[];
+  retReconciled=[]; retChangelog=[];
+  ['ret-info-su','ret-info-bt','ret-card-diff'].forEach(hide);
+  $('ret-map-section').classList.add('hidden');
+  $('btn-ret-reconcile').disabled = true;
+  clearStatus('ret-load-status');
+  clearStatus('ret-diff-status');
+  $('ret-file-su').value=''; $('ret-file-bt').value='';
+});
+
+// ─── CSV parse ────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const headers = splitLine(lines[0]);
+  const rows = lines.slice(1).filter(l => l.trim()).map(splitLine);
+  return { headers, rows };
+}
+function splitLine(line) {
+  const out = []; let cur = ''; let q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (q && line[i+1]==='"') { cur+='"'; i++; } else q=!q; }
+    else if (c===',' && !q) { out.push(cur.trim()); cur=''; }
+    else cur += c;
+  }
+  out.push(cur.trim()); return out;
+}
+function toCSV(rows) {
+  return rows.map(r => r.map(c => {
+    const s = String(c ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g,'""')}"` : s;
+  }).join(',')).join('\n');
+}
+
+// ─── Auto-match ───────────────────────────────────────────────────────────────
+function autoMatch(h, fieldSet) {
+  const k = h.toLowerCase().replace(/[\s_\-()/]/g,'');
+  const estMap = {
+    title:       ['title','name','componentname','itemname','item','partname'],
+    cost_code:   ['costcode','code','accountcode','division'],
+    cost_type:   ['costtype','type','linetype'],
+    group:       ['group','phase','section','tab','trade'],
+    description: ['description','desc','detail'],
+    quantity:    ['quantity','qty','count','num','number'],
+    unit:        ['unit','uom','unitofmeasure'],
+    unit_price:  ['unitprice','price','unitcost','cost','rate'],
+    amount:      ['amount','total','totalcost','totalprice','ext','extended'],
+    vendor:      ['vendor','sub','subcontractor','supplier','vendorsub','assignedto'],
+    notes:       ['internalnotes','notes','memo','internalcomment'],
+  };
+  const selMap = {
+    title:            ['title','name','selectionname','itemname','item'],
+    category:         ['category','selectiontype','selectioncategory'],
+    location:         ['location','room','space','area','zone'],
+    allowance:        ['allowance','allowanceamount','budget'],
+    deadline:         ['deadline','duedate','date','due'],
+    instructions:     ['instructions','publicinstructions','publicnotes','clientnotes'],
+    selections_notes: ['selectionsnotes','selectionnotes','internalnotes','notes'],
+    cost_code:        ['costcode','code','accountcode'],
+  };
+  const poMap = {
+    title:         ['title','name','potitle','itemname'],
+    vendor:        ['vendor','sub','subcontractor','supplier','vendorsub','assignedto'],
+    cost_code:     ['costcode','code','accountcode','division'],
+    scope_of_work: ['scopeofwork','scope','workscope','scopeofwork'],
+    po_date:       ['podate','date','orderdate','purchasedate'],
+    po_notes:      ['ponotes','pointernalnotes','internalnotes','notes','memo'],
+    description:   ['description','desc','detail','itemdescription'],
+    cost_type:     ['costtype','type','linetype'],
+    quantity:      ['quantity','qty','count'],
+    unit:          ['unit','uom','unitofmeasure'],
+    unit_price:    ['unitprice','price','unitcost','cost','rate'],
+    amount:        ['amount','total','totalcost','linetotal','extended'],
+  };
+  const map = fieldSet === 'selections' ? selMap : fieldSet === 'po' ? poMap : estMap;
+  for (const [field, kws] of Object.entries(map)) if (kws.includes(k)) return field;
+  return '';
+}
+
+function colIdx(h) { return srcHeaders.indexOf(h); }
+
+// ─── Load ─────────────────────────────────────────────────────────────────────
+function loadCSVText(text, filename) {
+  const { headers, rows } = parseCSV(text);
+  if (!headers.length) { showStatus('load-status','err','⚠ Could not parse file — check it is a valid CSV.'); return; }
+  srcHeaders = headers; srcRows = rows;
+  $('file-info').innerHTML = `<div class="file-pill">📄 <strong>${filename}</strong> <span style="color:var(--muted)">${rows.length} rows · ${headers.length} cols</span></div>`;
+  show('file-info');
+  buildMapUI();
+  show('card-map');
+  show('card-opts');
+  buildGroupSelects();
+  // Populate allowance field dropdown
+  const allowSel = $('allow-field');
+  if (allowSel) {
+    allowSel.innerHTML = '<option value="">— choose field —</option>';
+    srcHeaders.forEach(h => { const o = document.createElement('option'); o.value = o.textContent = h; allowSel.appendChild(o); });
+  }
+  clearStatus('load-status');
+  setStep(2);
+}
+
+// ─── Drive Picker + OAuth ─────────────────────────────────────────────────────
+const GAPI_KEY   = 'AIzaSyCm9hcKaiHVTPZzn0QUn9DBOs3MSL9GfQM';
+const CLIENT_ID  = '588488926069-3t7c6c22ft7h1916dkf5m5v0cs0rcb09.apps.googleusercontent.com';
+const SCOPES     = 'https://www.googleapis.com/auth/drive.readonly';
+let gAccessToken = null;
+let tokenClient  = null;
+
+// Load Google Identity Services + GAPI picker, then initialise token client
+function initGoogleAuth() {
+  // Load GIS token client
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (tokenResponse) => {
+      if (tokenResponse.error) {
+        showStatus('load-status','err','⚠ Google sign-in failed: ' + tokenResponse.error);
+        return;
+      }
+      gAccessToken = tokenResponse.access_token;
+      // Token obtained — now open the picker
+      openPickerWithToken();
+    },
+  });
+}
+
+function tryPicker() {
+  if (!tokenClient) {
+    showStatus('load-status','err','⚠ Google Auth not initialised. Please refresh the page.');
+    return;
+  }
+  if (gAccessToken) {
+    // Already have a token — open picker directly
+    openPickerWithToken();
+  } else {
+    // Request token (shows Google sign-in popup if needed)
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+}
+
+function openPickerWithToken() {
+  try {
+    const view = new google.picker.View(google.picker.ViewId.DOCS);
+    view.setMimeTypes('text/csv,text/plain,application/vnd.ms-excel,application/octet-stream');
+    // Also show shared drives
+    const sharedView = new google.picker.DocsView()
+      .setIncludeFolders(true)
+      .setEnableDrives(true)
+      .setMimeTypes('text/csv,text/plain,application/vnd.ms-excel,application/octet-stream');
+    new google.picker.PickerBuilder()
+      .setDeveloperKey(GAPI_KEY)
+      .setOAuthToken(gAccessToken)
+      .addView(view)
+      .addView(sharedView)
+      .setTitle('Select your SketchUp CSV')
+      .setCallback(pickerCallback)
+      .build()
+      .setVisible(true);
+  } catch(e) {
+    showStatus('load-status','err','⚠ Could not open Drive Picker: ' + e.message);
+  }
+}
+
+function pickerCallback(data) {
+  if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+    const doc = data[google.picker.Response.DOCUMENTS][0];
+    fetchDriveFile(doc[google.picker.Document.ID], doc[google.picker.Document.NAME]);
+  }
+}
+
+function fetchDriveFile(fileId, fileName) {
+  showStatus('load-status','info','<span class="spinner"></span> Loading "' + fileName + '" from Drive…');
+  fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+    headers: { 'Authorization': 'Bearer ' + gAccessToken }
+  })
+    .then(r => {
+      if (r.status === 401) {
+        // Token expired — clear and re-auth
+        gAccessToken = null;
+        tokenClient.requestAccessToken({ prompt: '' });
+        throw new Error('Token expired — re-authenticating');
+      }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(text => loadCSVText(text, fileName))
+    .catch(err => showStatus('load-status','err',
+      '⚠ Could not load file: ' + err.message + '. Try "Browse local file" as a fallback.'));
+}
+
+$('btn-drive-pick').addEventListener('click', () => {
+  showStatus('load-status','info','<span class="spinner"></span> Connecting to Google Drive…');
+  // Load picker API then initialise auth
+  gapi.load('picker', () => {
+    clearStatus('load-status');
+    // Load GIS script if not already loaded
+    if (typeof google !== 'undefined' && google.accounts) {
+      initGoogleAuth();
+      tryPicker();
+    } else {
+      showStatus('load-status','err','⚠ Google Identity Services not loaded. Check your internet connection.');
+    }
+  });
+});
+$('btn-local').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', e => { if (e.target.files[0]) readLocal(e.target.files[0]); });
+
+const dz = $('drive-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer.files[0]) readLocal(e.dataTransfer.files[0]); });
+
+function readLocal(file) {
+  const r = new FileReader();
+  r.onload = e => loadCSVText(e.target.result, file.name);
+  r.readAsText(file);
+}
+
+// ─── Map UI ───────────────────────────────────────────────────────────────────
+function activeFields() {
+  if (mode === 'selections') return SEL_FIELDS;
+  if (mode === 'po')         return PO_FIELDS;
+  return EST_FIELDS;
+}
+
+function buildMapUI() {
+  const fields = activeFields();
+  const grid = $('map-grid');
+  grid.innerHTML = '';
+  fields.forEach(f => {
+    const auto = srcHeaders.find(h => autoMatch(h, mode) === f.key) || '';
+    const dotClass = f.dot === 'sel' ? 'dot-sel' : f.req ? 'dot-req' : 'dot-opt';
+    const row = document.createElement('div');
+    row.className = 'map-row';
+    row.innerHTML = `
+      <div class="map-label"><div class="${dotClass}"></div>${f.label}</div>
+      <span style="color:var(--faint);font-size:0.75rem">←</span>
+      <select id="map-${f.key}">
+        <option value="">— skip —</option>
+        ${srcHeaders.map(h => `<option value="${h}"${h===auto?' selected':''}>${h}</option>`).join('')}
+      </select>`;
+    grid.appendChild(row);
+  });
+  const wrap = $('preview-tbl');
+  const rows = srcRows.slice(0, 5);
+  wrap.innerHTML = `<table><thead><tr>${srcHeaders.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function buildGroupSelects() {
+  ['opt-group','sel-opt-group','po-opt-group'].forEach(id => {
+    const sel = $(id);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— No grouping —</option>';
+    srcHeaders.forEach(h => { const o = document.createElement('option'); o.value = o.textContent = h; sel.appendChild(o); });
+  });
+}
+
+function getMapping() {
+  const fields = activeFields();
+  const m = {};
+  fields.forEach(f => { const v = $(`map-${f.key}`)?.value; if (v) m[f.key] = v; });
+  return m;
+}
+
+// ─── Allowance toggle ─────────────────────────────────────────────────────────
+$('opt-allow-enable').addEventListener('change', function() {
+  this.checked ? show('allow-config') : hide('allow-config');
+});
+
+// ─── Process: Estimate ────────────────────────────────────────────────────────
+$('btn-process-est').addEventListener('click', () => {
+  const mapping  = getMapping();
+  const groupBy  = $('opt-group').value;
+  const defUnit  = $('opt-unit').value || 'EA';
+  const skipZero = $('opt-skip-zero').checked;
+  const doTrim   = $('opt-trim').checked;
+  const addDims  = $('opt-dims').checked;
+  const amtMode  = $('opt-amount').value;
+  const doAllow  = $('opt-allow-enable').checked;
+  const allowFld = $('allow-field').value;
+  const allowVal = $('allow-value').value.trim().toLowerCase();
+
+  const missing = EST_FIELDS.filter(f => f.req && !mapping[f.key]).map(f => f.label);
+  if (missing.length) { showStatus('out-status','err',`⚠ Missing required mappings: ${missing.join(', ')}`); show('card-out'); return; }
+
+  const dimCols = addDims
+    ? ['length','width','height','depth','thickness']
+        .map(d => srcHeaders.find(h => h.toLowerCase().includes(d))).filter(Boolean)
+    : [];
+
+  outputGroups = {};
+
+  srcRows.forEach(row => {
+    const get = col => {
+      if (!col) return '';
+      const i = colIdx(col);
+      let v = i >= 0 ? (row[i] ?? '') : '';
+      if (doTrim) v = v.toString().trim();
+      return v;
+    };
+    const qty    = parseFloat(get(mapping['quantity'])) || 0;
+    if (skipZero && !qty) return;
+    const uPrice = parseFloat(get(mapping['unit_price'])) || 0;
+
+    let desc = mapping['description'] ? get(mapping['description']) : '';
+    if (addDims && dimCols.length) {
+      const dims = dimCols.map(d => get(d)).filter(Boolean);
+      if (dims.length) desc = [desc, dims.join('×')].filter(Boolean).join(' — ');
+    }
+
+    let amt = '';
+    if (amtMode === 'calc') amt = (qty * uPrice).toFixed(2);
+    else if (amtMode === 'source' && mapping['amount']) amt = get(mapping['amount']);
+
+    let markAs = '';
+    if (doAllow && allowFld) {
+      const cellVal = get(allowFld).toLowerCase();
+      if (!allowVal || cellVal.includes(allowVal)) markAs = 'Allowance';
+    }
+
+    const btRow = [
+      get(mapping['title']),
+      get(mapping['cost_code']),
+      get(mapping['cost_type']),
+      get(mapping['group']),
+      desc,
+      qty || '',
+      mapping['unit'] ? get(mapping['unit']) : defUnit,
+      uPrice || '',
+      amt,
+      get(mapping['vendor']),
+      get(mapping['notes']),
+      markAs,
+    ];
+    const gKey = groupBy ? (get(groupBy) || 'Uncategorized') : 'All Items';
+    if (!outputGroups[gKey]) outputGroups[gKey] = [];
+    outputGroups[gKey].push(btRow);
+  });
+
+  renderOutput(EST_HEADERS, 'est');
+});
+
+// ─── Process: Selections ──────────────────────────────────────────────────────
+$('btn-process-sel').addEventListener('click', () => {
+  const mapping  = getMapping();
+  const groupBy  = $('sel-opt-group').value;
+  const defDL    = $('sel-opt-deadline').value.trim();
+  const doTrim   = $('sel-opt-trim').checked;
+
+  const missing = SEL_FIELDS.filter(f => f.req && !mapping[f.key]).map(f => f.label);
+  if (missing.length) { showStatus('out-status','err',`⚠ Missing required mappings: ${missing.join(', ')}`); show('card-out'); return; }
+
+  outputGroups = {};
+
+  srcRows.forEach(row => {
+    const get = col => {
+      if (!col) return '';
+      const i = colIdx(col);
+      let v = i >= 0 ? (row[i] ?? '') : '';
+      if (doTrim) v = v.toString().trim();
+      return v;
+    };
+    const selRow = [
+      get(mapping['title']),
+      get(mapping['category']),
+      get(mapping['location']),
+      get(mapping['allowance']),
+      mapping['deadline'] ? get(mapping['deadline']) : defDL,
+      get(mapping['instructions']),
+      get(mapping['selections_notes']),
+      get(mapping['cost_code']),
+    ];
+    const gKey = groupBy ? (get(groupBy) || 'Uncategorized') : 'All Items';
+    if (!outputGroups[gKey]) outputGroups[gKey] = [];
+    outputGroups[gKey].push(selRow);
+  });
+
+  renderOutput(SEL_HEADERS, 'sel');
+});
+
+// ─── Process: Purchase Orders ─────────────────────────────────────────────────
+$('btn-process-po').addEventListener('click', () => {
+  const mapping  = getMapping();
+  const groupBy  = $('po-opt-group').value;
+  const defUnit  = $('po-opt-unit').value || 'EA';
+  const skipZero = $('po-opt-skip-zero').checked;
+  const doTrim   = $('po-opt-trim').checked;
+  const amtMode  = $('po-opt-amount').value;
+
+  const missing = PO_FIELDS.filter(f => f.req && !mapping[f.key]).map(f => f.label);
+  if (missing.length) { showStatus('out-status','err',`⚠ Missing required mappings: ${missing.join(', ')}`); show('card-out'); return; }
+
+  outputGroups = {};
+
+  srcRows.forEach(row => {
+    const get = col => {
+      if (!col) return '';
+      const i = colIdx(col);
+      let v = i >= 0 ? (row[i] ?? '') : '';
+      if (doTrim) v = v.toString().trim();
+      return v;
+    };
+    const qty    = parseFloat(get(mapping['quantity'])) || 0;
+    if (skipZero && !qty) return;
+    const uPrice = parseFloat(get(mapping['unit_price'])) || 0;
+
+    let amt = '';
+    if (amtMode === 'calc') amt = (qty * uPrice).toFixed(2);
+    else if (amtMode === 'source' && mapping['amount']) amt = get(mapping['amount']);
+
+    const poRow = [
+      get(mapping['title']),
+      get(mapping['vendor']),
+      get(mapping['cost_code']),
+      get(mapping['scope_of_work']),
+      get(mapping['po_date']),
+      get(mapping['po_notes']),
+      get(mapping['description']),
+      get(mapping['cost_type']),
+      qty || '',
+      mapping['unit'] ? get(mapping['unit']) : defUnit,
+      uPrice || '',
+      amt,
+    ];
+    // Default group by vendor for POs
+    const gKey = groupBy ? (get(groupBy) || 'Uncategorized') : (get(mapping['vendor']) || 'Unassigned');
+    if (!outputGroups[gKey]) outputGroups[gKey] = [];
+    outputGroups[gKey].push(poRow);
+  });
+
+  renderOutput(PO_HEADERS, 'po');
+});
+
+// ─── Render output ────────────────────────────────────────────────────────────
+function renderOutput(headers, tabMode) {
+  const gNames = Object.keys(outputGroups);
+  if (!gNames.length) { showStatus('out-status','err','⚠ No rows matched after filtering.'); show('card-out'); return; }
+
+  const tabStrip = $('out-tabs');
+  tabStrip.innerHTML = '';
+  gNames.forEach((name, i) => {
+    const btn = document.createElement('button');
+    btn.className = `tab-btn${i===0 ? ` active-${tabMode}` : ''}`;
+    btn.textContent = `${name} (${outputGroups[name].length})`;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-est','active-sel','active-po','active-ret'));
+      btn.classList.add(`active-${tabMode}`);
+      renderOutTable(name, headers, tabMode);
+    };
+    tabStrip.appendChild(btn);
+  });
+  renderOutTable(gNames[0], headers, tabMode);
+  const total = Object.values(outputGroups).reduce((s,r) => s+r.length, 0);
+  $('row-meta').textContent = `${total} rows · ${gNames.length} group${gNames.length>1?'s':''}`;
+  showStatus('out-status','ok','✓ Ready — review above then download.');
+  show('card-out');
+  setStep(4);
+}
+
+function renderOutTable(group, headers, tabMode) {
+  const rows = (outputGroups[group]||[]).slice(0,8);
+  const more = (outputGroups[group]?.length||0) - 8;
+  const markAsIdx = headers.indexOf('Mark As');
+  $('out-tbl').innerHTML = `<table>
+    <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map((c,ci)=>{
+      if (ci===markAsIdx && c==='Allowance') return `<td class="allow-tag">● Allowance</td>`;
+      return `<td>${c}</td>`;
+    }).join('')}</tr>`).join('')}</tbody>
+  </table>${more>0?`<div style="padding:0.5rem 0.75rem;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted)">… +${more} more rows</div>`:''}`;
+}
+
+// ─── Download ─────────────────────────────────────────────────────────────────
+$('btn-dl').addEventListener('click', () => {
+  const headers  = mode==='estimate' ? EST_HEADERS : mode==='selections' ? SEL_HEADERS : PO_HEADERS;
+  const fnameEl  = mode==='estimate' ? 'opt-filename-est' : mode==='selections' ? 'opt-filename-sel' : 'opt-filename-po';
+  const gNames   = Object.keys(outputGroups);
+  let allRows    = [];
+
+  if (gNames.length > 1) {
+    gNames.forEach(g => {
+      allRows.push([g, ...Array(headers.length-1).fill('')]);
+      allRows = allRows.concat(outputGroups[g]);
+      allRows.push(Array(headers.length).fill(''));
+    });
+  } else {
+    allRows = outputGroups[gNames[0]];
+  }
+
+  const content = toCSV([headers, ...allRows]);
+  const fname = ($(fnameEl)?.value.trim() || 'PMM_Bridge_Export') + '.csv';
+  const blob = new Blob([content], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = fname; a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+$('btn-reset').addEventListener('click', () => {
+  srcHeaders=[]; srcRows=[]; outputGroups={};
+  $('file-input').value='';
+  hide('file-info'); $('file-info').innerHTML='';
+  hide('card-map'); hide('card-opts'); hide('card-out');
+  clearStatus('load-status'); clearStatus('out-status');
+  setStep(1);
+});
+
+// ─── Status helpers ───────────────────────────────────────────────────────────
+function showStatus(id, type, html) { $(id).innerHTML=`<div class="status ${type}">${html}</div>`; }
+function clearStatus(id) { $(id).innerHTML=''; }
+
+// ─── Init Google Auth on load ────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const waitForGIS = setInterval(() => {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+      clearInterval(waitForGIS);
+      initGoogleAuth();
+    }
+  }, 100);
+});
+</script>
+</body>
+</html>
